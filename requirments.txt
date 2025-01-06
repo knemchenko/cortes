@@ -1,0 +1,3 @@
+aiogram
+instaloader
+yt-dlp
