@@ -25,7 +25,8 @@ def index():
             a.chat_id, 
             c.chat_title, 
             a.instagram_count, 
-            a.youtube_count
+            a.youtube_count,
+            a.twitter_count
         FROM activity a
         LEFT JOIN users u ON a.user_id = u.user_id
         LEFT JOIN chats c ON a.chat_id = c.chat_id

@@ -70,7 +70,10 @@ def log_activity(user_id, chat_id, instagram=False, youtube=False, twitter=False
     VALUES (?, ?, ?, ?, ?, ?)
     ON CONFLICT(user_id, chat_id) DO UPDATE SET
         instagram_count = instagram_count + ?,
-        youtube_count = youtube_count + ?
-    """, (user_id, chat_id, int(instagram), int(youtube), int(instagram), int(youtube), int(twitter), int(tiktok)))
+        youtube_count = youtube_count + ?,
+        twitter_count = twitter_count + ?,
+        tiktok_count = tiktok_count + ?
+    """, (user_id, chat_id, int(instagram), int(youtube), int(twitter), int(tiktok),
+        int(instagram), int(youtube), int(twitter), int(tiktok)))
     conn.commit()
     conn.close()
