@@ -26,7 +26,7 @@ START_MESSAGE_NON_ADMIN = (
     "Я допоможу тобі інтегрувати відео із Instagram Reels, YouTube Short та Twitter в Telegram. Просто присилай мені посилання на відео у форматі:\n"
     "https://www.instagram.com/reel/XXX\n"
     "https://www.youtube.com/shorts/XXX\n"
-    "https://twitter.com/ctbbpodcast/status/XXX\n\n"
+    "https://twitter.com/user/status/XXX\n\n"
     "Я його завантажу і пришлю тобі телеграм повідомленням. Завантаження займає певний час, тож будь терплячим.\n\n"
     "Якщо хочеш, щоб я працював у групі - додай мене туди і дай права адміна. На жаль, за правилами Telegram я не буду бачити повідомлення учасників без прав адміна.\n\n"
     "Якщо хочеш, щоб я видаляв повідомлення з посиланнями, які перетоврю на відео - то дай мені права на видалення повідолмень.\n\n"
@@ -203,8 +203,15 @@ async def download_twitter_video(url: str, chat_id: int, sender: types.User) -> 
 
 async def download_twitter_images_via_fixtweet(url: str, chat_id: int, sender: types.User) -> bool:
     """Download and send Twitter images via FixTweet."""
-    # TODO: Maybe replay with fxtwitter
-    return False
+    try:
+        url_to_send = re.sub(r"(https?://)(?:www\.)?(twitter\.com|x\.com)", r"\1fxtwitter.com", url)
+        user_link = f"[{sender.full_name or sender.username}](tg://user?id={sender.id})"
+        message_text = f"{user_link} sent [Twitter post]({url_to_send})"
+        await bot.send_message(chat_id, message_text, parse_mode="Markdown")
+        return True
+    except Exception as e:
+        logger.error(f"Error downloading Twitter video for URL: {url}. Error: {e}")
+        return False
 
 @router.message(F.text == "/start")
 async def send_welcome(message: types.Message):
@@ -223,7 +230,7 @@ async def send_welcome(message: types.Message):
 async def handle_instagram_reels(message: types.Message):
     """Handle messages containing Instagram Reel links."""
     match = re.search(INSTAGRAM_REELS_REGEX, message.text)
-    if match and message.text.strip() == match[0]:
+    if match and len(message.text.split(' ')) == 1:
         url = match.group(0)
         url = url.replace('share', 'reel')if 'share' in url else url
         sender = message.from_user
@@ -243,7 +250,7 @@ async def handle_instagram_reels(message: types.Message):
 async def handle_youtube_shorts(message: types.Message):
     """Handle messages containing YouTube Shorts links."""
     match = re.search(YOUTUBE_SHORTS_REGEX, message.text)
-    if match and message.text.strip() == match[0]:
+    if match and len(message.text.split(' ')) == 1:
         url = match.group(0)
         sender = message.from_user
         chat_id = message.chat.id
@@ -262,7 +269,7 @@ async def handle_youtube_shorts(message: types.Message):
 async def handle_twitter_media(message: types.Message):
     """Handle messages containing Twitter links."""
     match = re.search(TWITTER_REGEX, message.text)
-    if match and message.text.strip() == match[0]:
+    if match and len(message.text.split(' ')) == 1:
         url = match.group(0)
         sender = message.from_user
         chat_id = message.chat.id
