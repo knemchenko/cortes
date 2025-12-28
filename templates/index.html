@@ -15,6 +15,9 @@
             font-size: 2rem;
             font-weight: bold;
         }
+        .accordion-button:not(.collapsed) {
+            background-color: #e7f1ff;
+        }
     </style>
 </head>
 <body class="bg-light">
@@ -40,7 +43,7 @@
                 </div>
             </div>
             <div class="col-md-12 col-lg-6 mb-3">
-                 <div class="card">
+                <div class="card">
                     <div class="card-body">
                         <h5 class="card-title text-center">Conversion Distribution</h5>
                         <canvas id="conversionChart"></canvas>
@@ -49,85 +52,58 @@
             </div>
         </div>
 
-        <!-- Detailed Tables -->
+        <!-- Grouped Activity Data -->
         <div class="mb-5">
-            <h2>Activity</h2>
-            <table class="table table-striped table-hover">
-                <thead class="table-dark">
-                    <tr>
-                        <th>User ID</th>
-                        <th>Username</th>
-                        <th>Chat ID</th>
-                        <th>Chat Title</th>
-                        <th>Instagram</th>
-                        <th>YouTube</th>
-                        <th>Twitter</th>
-                        <th>TikTok</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for record in activity %}
-                    <tr>
-                        <td>{{ record[0] }}</td>
-                        <td>{{ record[1] }}</td>
-                        <td>{{ record[2] }}</td>
-                        <td>{{ record[3] }}</td>
-                        <td>{{ record[4] }}</td>
-                        <td>{{ record[5] }}</td>
-                        <td>{{ record[6] }}</td>
-                        <td>{{ record[7] }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-
-        <div class="mb-5">
-            <h2>Users</h2>
-            <table class="table table-striped table-hover">
-                <thead class="table-dark">
-                    <tr>
-                        <th>User ID</th>
-                        <th>Username</th>
-                        <th>Full Name</th>
-                        <th>Start Count</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for user in users %}
-                    <tr>
-                        <td>{{ user[0] }}</td>
-                        <td>{{ user[1] }}</td>
-                        <td>{{ user[2] }}</td>
-                        <td>{{ user[3] }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-
-        <div class="mb-5">
-            <h2>Chats</h2>
-            <table class="table table-striped table-hover">
-                <thead class="table-dark">
-                    <tr>
-                        <th>Chat ID</th>
-                        <th>Chat Title</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for chat in chats %}
-                    <tr>
-                        <td>{{ chat[0] }}</td>
-                        <td>{{ chat[1] }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h2>Activity by Chat</h2>
+                <input type="text" id="searchInput" class="form-control w-50" placeholder="Search by chat or user...">
+            </div>
+            <div class="accordion" id="chatsAccordion">
+                {% for chat_id, chat_data in chats_data.items() %}
+                <div class="accordion-item" data-chat-title="{{ chat_data.chat_title }}">
+                    <h2 class="accordion-header" id="heading-{{ loop.index }}">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-{{ loop.index }}">
+                            {{ chat_data.chat_title }} ({{ chat_data.users|length }} users)
+                        </button>
+                    </h2>
+                    <div id="collapse-{{ loop.index }}" class="accordion-collapse collapse" data-bs-parent="#chatsAccordion">
+                        <div class="accordion-body">
+                            <table class="table table-striped table-hover">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>User ID</th>
+                                        <th>Username</th>
+                                        <th>Full Name</th>
+                                        <th>Instagram</th>
+                                        <th>YouTube</th>
+                                        <th>Twitter</th>
+                                        <th>TikTok</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for user in chat_data.users %}
+                                    <tr data-username="{{ user.username }}" data-fullname="{{ user.full_name }}">
+                                        <td>{{ user.user_id }}</td>
+                                        <td>{{ user.username }}</td>
+                                        <td>{{ user.full_name }}</td>
+                                        <td>{{ user.instagram }}</td>
+                                        <td>{{ user.youtube }}</td>
+                                        <td>{{ user.twitter }}</td>
+                                        <td>{{ user.tiktok }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
         </div>
     </div>
-
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        // Chart.js setup
         const ctx = document.getElementById('conversionChart').getContext('2d');
         const conversionData = {{ conversion_data | tojson }};
 
@@ -163,23 +139,39 @@
                 plugins: {
                     legend: {
                         position: 'top',
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                let label = context.label || '';
-                                if (label) {
-                                    label += ': ';
-                                }
-                                if (context.parsed !== null) {
-                                    label += context.parsed;
-                                }
-                                return label;
-                            }
-                        }
                     }
                 }
             }
+        });
+
+        // Search functionality
+        document.getElementById('searchInput').addEventListener('keyup', function() {
+            const searchTerm = this.value.toLowerCase();
+            const accordionItems = document.querySelectorAll('.accordion-item');
+
+            accordionItems.forEach(item => {
+                const chatTitle = item.dataset.chatTitle.toLowerCase();
+                const userRows = item.querySelectorAll('tbody tr');
+                let chatHasVisibleUsers = false;
+
+                userRows.forEach(row => {
+                    const username = row.dataset.username.toLowerCase();
+                    const fullname = row.dataset.fullname.toLowerCase();
+
+                    if (username.includes(searchTerm) || fullname.includes(searchTerm)) {
+                        row.style.display = '';
+                        chatHasVisibleUsers = true;
+                    } else {
+                        row.style.display = 'none';
+                    }
+                });
+
+                if (chatTitle.includes(searchTerm) || chatHasVisibleUsers) {
+                    item.style.display = '';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
         });
     </script>
 </body>
