@@ -77,3 +77,7 @@ def log_activity(user_id, chat_id, instagram=False, youtube=False, twitter=False
         int(instagram), int(youtube), int(twitter), int(tiktok)))
     conn.commit()
     conn.close()
+
+if __name__ == "__main__":
+    init_db()
+    print("Database initialized successfully.")

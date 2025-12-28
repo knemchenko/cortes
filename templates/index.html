@@ -3,12 +3,84 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bot Statistics</title>
+    <title>Bot Statistics Dashboard</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .card-title {
+            font-size: 1.1rem;
+            font-weight: 500;
+        }
+        .card-text {
+            font-size: 2rem;
+            font-weight: bold;
+        }
+    </style>
 </head>
 <body class="bg-light">
     <div class="container py-4">
-        <h1 class="text-center mb-4">Telegram Bot Statistics</h1>
+        <h1 class="text-center mb-4">Bot Statistics Dashboard</h1>
+
+        <!-- Summary Cards -->
+        <div class="row mb-4">
+            <div class="col-md-6 col-lg-3 mb-3">
+                <div class="card text-center h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">Total Users</h5>
+                        <p class="card-text">{{ total_users }}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-3 mb-3">
+                <div class="card text-center h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">Total Chats</h5>
+                        <p class="card-text">{{ total_chats }}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-12 col-lg-6 mb-3">
+                 <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title text-center">Conversion Distribution</h5>
+                        <canvas id="conversionChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Detailed Tables -->
+        <div class="mb-5">
+            <h2>Activity</h2>
+            <table class="table table-striped table-hover">
+                <thead class="table-dark">
+                    <tr>
+                        <th>User ID</th>
+                        <th>Username</th>
+                        <th>Chat ID</th>
+                        <th>Chat Title</th>
+                        <th>Instagram</th>
+                        <th>YouTube</th>
+                        <th>Twitter</th>
+                        <th>TikTok</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for record in activity %}
+                    <tr>
+                        <td>{{ record[0] }}</td>
+                        <td>{{ record[1] }}</td>
+                        <td>{{ record[2] }}</td>
+                        <td>{{ record[3] }}</td>
+                        <td>{{ record[4] }}</td>
+                        <td>{{ record[5] }}</td>
+                        <td>{{ record[6] }}</td>
+                        <td>{{ record[7] }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
 
         <div class="mb-5">
             <h2>Users</h2>
@@ -53,36 +125,62 @@
                 </tbody>
             </table>
         </div>
-
-        <div>
-            <h2>Activity</h2>
-            <table class="table table-striped table-hover">
-                <thead class="table-dark">
-                    <tr>
-                        <th>User ID</th>
-                        <th>Username</th>
-                        <th>Chat ID</th>
-                        <th>Chat Title</th>
-                        <th>Instagram Conversions</th>
-                        <th>YouTube Conversions</th>
-                        <th>Twitter Conversions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for record in activity %}
-                    <tr>
-                        <td>{{ record[0] }}</td>
-                        <td>{{ record[1] }}</td>
-                        <td>{{ record[2] }}</td>
-                        <td>{{ record[3] }}</td>
-                        <td>{{ record[4] }}</td>
-                        <td>{{ record[5] }}</td>
-                        <td>{{ record[6] }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
     </div>
+
+    <script>
+        const ctx = document.getElementById('conversionChart').getContext('2d');
+        const conversionData = {{ conversion_data | tojson }};
+
+        new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels: ['Instagram', 'YouTube', 'Twitter', 'TikTok'],
+                datasets: [{
+                    label: 'Conversions',
+                    data: [
+                        conversionData.instagram,
+                        conversionData.youtube,
+                        conversionData.twitter,
+                        conversionData.tiktok
+                    ],
+                    backgroundColor: [
+                        'rgba(255, 99, 132, 0.7)',
+                        'rgba(54, 162, 235, 0.7)',
+                        'rgba(255, 206, 86, 0.7)',
+                        'rgba(75, 192, 192, 0.7)'
+                    ],
+                    borderColor: [
+                        'rgba(255, 99, 132, 1)',
+                        'rgba(54, 162, 235, 1)',
+                        'rgba(255, 206, 86, 1)',
+                        'rgba(75, 192, 192, 1)'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                if (context.parsed !== null) {
+                                    label += context.parsed;
+                                }
+                                return label;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    </script>
 </body>
 </html>
