@@ -1,7 +1,10 @@
+import os
 from flask import Flask, render_template
 import sqlite3
 
-DB_FILE = "bot_usage.db"
+# Absolute path to the database file
+APP_DIR = os.path.dirname(os.path.abspath(__file__))
+DB_FILE = os.path.join(APP_DIR, "bot_usage.db")
 app = Flask(__name__)
 
 def query_db(query, args=(), one=False):
@@ -16,27 +19,97 @@ def query_db(query, args=(), one=False):
 @app.route("/")
 def index():
     """Render the main statistics page."""
-    users = query_db("SELECT user_id, username, full_name, start_count FROM users")
-    chats = query_db("SELECT chat_id, chat_title FROM chats")
-    activity = query_db("""
-        SELECT 
-            a.user_id, 
-            u.username, 
-            a.chat_id, 
-            c.chat_title, 
-            a.instagram_count, 
+    # --- Summary Statistics ---
+    total_users = query_db("SELECT COUNT(*) FROM users", one=True)[0]
+    total_chats = query_db("SELECT COUNT(*) FROM chats", one=True)[0]
+    total_conversions = query_db(
+        """
+        SELECT
+            SUM(instagram_count),
+            SUM(youtube_count),
+            SUM(twitter_count),
+            SUM(tiktok_count)
+        FROM activity
+    """,
+        one=True,
+    )
+
+    conversion_data = {
+        "instagram": total_conversions[0] or 0,
+        "youtube": total_conversions[1] or 0,
+        "twitter": total_conversions[2] or 0,
+        "tiktok": total_conversions[3] or 0,
+    }
+
+    # --- Grouped Data ---
+    activity_query = """
+        SELECT
+            c.chat_id,
+            c.chat_title,
+            u.user_id,
+            u.username,
+            u.full_name,
+            a.instagram_count,
             a.youtube_count,
-            a.twitter_count
+            a.twitter_count,
+            a.tiktok_count
         FROM activity a
-        LEFT JOIN users u ON a.user_id = u.user_id
-        LEFT JOIN chats c ON a.chat_id = c.chat_id
-    """)
+        JOIN users u ON a.user_id = u.user_id
+        JOIN chats c ON a.chat_id = c.chat_id
+        ORDER BY c.chat_title, u.username
+    """
+    activity_data = query_db(activity_query)
+
+    # Process data into a nested structure
+    chats_data = {}
+    for row in activity_data:
+        chat_id, chat_title, user_id, username, full_name, insta, yt, tw, tk = row
+        if chat_id not in chats_data:
+            is_private = not chat_title
+            final_chat_title = chat_title or f"Private chat with {full_name or username}"
+            chats_data[chat_id] = {
+                "chat_title": final_chat_title,
+                "users": [],
+                "is_private": is_private,
+                "total_instagram": 0,
+                "total_conversions": 0,
+            }
+
+        # Aggregate stats
+        chats_data[chat_id]["total_instagram"] += insta
+        chats_data[chat_id]["total_conversions"] += insta + yt + tw + tk
+
+        chats_data[chat_id]["users"].append(
+            {
+                "user_id": user_id,
+                "username": username,
+                "full_name": full_name,
+                "instagram": insta,
+                "youtube": yt,
+                "twitter": tw,
+                "tiktok": tk,
+            }
+        )
+
+    # Separate and sort chats
+    private_chats = sorted(
+        [(cid, data) for cid, data in chats_data.items() if data['is_private']],
+        key=lambda item: item[1]['total_instagram'],
+        reverse=True
+    )
+    group_chats = sorted(
+        [(cid, data) for cid, data in chats_data.items() if not data['is_private']],
+        key=lambda item: item[1]['total_instagram'],
+        reverse=True
+    )
 
     return render_template(
         "index.html",
-        users=users,
-        chats=chats,
-        activity=activity
+        total_users=total_users,
+        total_chats=total_chats,
+        conversion_data=conversion_data,
+        private_chats=private_chats,
+        group_chats=group_chats,
     )
 
 if __name__ == "__main__":
