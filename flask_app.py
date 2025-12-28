@@ -65,11 +65,19 @@ def index():
     for row in activity_data:
         chat_id, chat_title, user_id, username, full_name, insta, yt, tw, tk = row
         if chat_id not in chats_data:
-            # If chat title is None (e.g., private chat), create a descriptive title
-            final_chat_title = chat_title
-            if not final_chat_title:
-                final_chat_title = f"Private chat with {full_name or username}"
-            chats_data[chat_id] = {"chat_title": final_chat_title, "users": []}
+            is_private = not chat_title
+            final_chat_title = chat_title or f"Private chat with {full_name or username}"
+            chats_data[chat_id] = {
+                "chat_title": final_chat_title,
+                "users": [],
+                "is_private": is_private,
+                "total_instagram": 0,
+                "total_conversions": 0,
+            }
+
+        # Aggregate stats for sorting
+        chats_data[chat_id]["total_instagram"] += insta
+        chats_data[chat_id]["total_conversions"] += insta + yt + tw + tk
 
         chats_data[chat_id]["users"].append(
             {
@@ -83,12 +91,19 @@ def index():
             }
         )
 
+    # Sort chats by total Instagram conversions in descending order
+    sorted_chats = sorted(
+        chats_data.items(),
+        key=lambda item: item[1]['total_instagram'],
+        reverse=True
+    )
+
     return render_template(
         "index.html",
         total_users=total_users,
         total_chats=total_chats,
         conversion_data=conversion_data,
-        chats_data=chats_data,
+        chats_data=sorted_chats,
     )
 
 if __name__ == "__main__":
