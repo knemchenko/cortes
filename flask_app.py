@@ -75,7 +75,7 @@ def index():
                 "total_conversions": 0,
             }
 
-        # Aggregate stats for sorting
+        # Aggregate stats
         chats_data[chat_id]["total_instagram"] += insta
         chats_data[chat_id]["total_conversions"] += insta + yt + tw + tk
 
@@ -91,9 +91,14 @@ def index():
             }
         )
 
-    # Sort chats by total Instagram conversions in descending order
-    sorted_chats = sorted(
-        chats_data.items(),
+    # Separate and sort chats
+    private_chats = sorted(
+        [(cid, data) for cid, data in chats_data.items() if data['is_private']],
+        key=lambda item: item[1]['total_instagram'],
+        reverse=True
+    )
+    group_chats = sorted(
+        [(cid, data) for cid, data in chats_data.items() if not data['is_private']],
         key=lambda item: item[1]['total_instagram'],
         reverse=True
     )
@@ -103,7 +108,8 @@ def index():
         total_users=total_users,
         total_chats=total_chats,
         conversion_data=conversion_data,
-        chats_data=sorted_chats,
+        private_chats=private_chats,
+        group_chats=group_chats,
     )
 
 if __name__ == "__main__":
