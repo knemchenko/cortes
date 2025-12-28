@@ -65,7 +65,12 @@ def index():
     for row in activity_data:
         chat_id, chat_title, user_id, username, full_name, insta, yt, tw, tk = row
         if chat_id not in chats_data:
-            chats_data[chat_id] = {"chat_title": chat_title, "users": []}
+            # If chat title is None (e.g., private chat), create a descriptive title
+            final_chat_title = chat_title
+            if not final_chat_title:
+                final_chat_title = f"Private chat with {full_name or username}"
+            chats_data[chat_id] = {"chat_title": final_chat_title, "users": []}
+
         chats_data[chat_id]["users"].append(
             {
                 "user_id": user_id,
